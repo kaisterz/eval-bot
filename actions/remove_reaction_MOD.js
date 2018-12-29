@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Create Animated Emoji",
+name: "Remove Reaction",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,7 @@ name: "Create Animated Emoji",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Emoji Control",
+section: "Reaction Control",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,7 +23,8 @@ section: "Emoji Control",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	return `${data.emojiName}`;
+	const names = ['Mentioned User', 'Command Author', 'Temp Variable', 'Server Variable', 'Global Variable'];
+	return `${names[parseInt(data.member)]}`;
 },
 
 //---------------------------------------------------------------------
@@ -37,27 +38,17 @@ subtitle: function(data) {
 	 author: "MrGold",
 
 	 // The version of the mod (Defaults to 1.0.0)
-	 version: "1.9.4", //Added in 1.9.4
+	 version: "1.9.1", //Added in 1.9.1
 
 	 // A short description to show on the mod line for this mod (Must be on a single line)
-	 short_description: "Creates an Animated Emoji",
+	 short_description: "Removes a reaction from a message",
 
 	 // If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
-     
+     depends_on_mods: [
+	 {name:'WrexMods',path:'aaa_wrexmods_dependencies_MOD.js'}
+	 ],
 
 	 //---------------------------------------------------------------------
-
-//---------------------------------------------------------------------
-// Action Storage Function
-//
-// Stores the relevant variable info for the editor.
-//---------------------------------------------------------------------
-
-variableStorage: function(data, varType) {
-	const type = parseInt(data.storage2);
-	if(type !== varType) return;
-	return ([data.varName2, 'Animated Emoji']);
-},
 
 //---------------------------------------------------------------------
 // Action Fields
@@ -67,7 +58,7 @@ variableStorage: function(data, varType) {
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["emojiName", "storage", "varName", "storage2", "varName2"],
+fields: ["reaction", "varName", "member", "varName2"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -90,35 +81,31 @@ html: function(isEvent, data) {
 <div>
     <p>
         <u>Mod Info:</u><br>
-	    Created by MrGold
+	Created by MrGold
     </p>
-</div><br>
-<div style="width: 90%;">
-	Animated Emoji Name:<br>
-	<input id="emojiName" class="round" type="text">
 </div><br>
 <div>
 	<div style="float: left; width: 35%;">
-		Source GIF:<br>
-		<select id="storage" class="round" onchange="glob.refreshVariableList(this)">
+		Source Reaction:<br>
+		<select id="reaction" class="round" onchange="glob.refreshVariableList(this)">
 			${data.variables[1]}
 		</select>
 	</div>
 	<div id="varNameContainer" style="float: right; width: 60%;">
 		Variable Name:<br>
-		<input id="varName" class="round" type="text" list="variableList">
+		<input id="varName" class="round" type="text" list="variableList"><br>
 	</div>
-</div><br><br><br>
-<div style="padding-top: 8px;">
+</div><br><br><br><br>
+<div>
 	<div style="float: left; width: 35%;">
-		Store In:<br>
-		<select id="storage2" class="round" onchange="glob.onChange1(this)">
-			${data.variables[0]}
+		Source Member:<br>
+		<select id="member" class="round" onchange="glob.memberChange(this, 'varNameContainer2')">
+			${data.members[isEvent ? 1 : 0]}
 		</select>
 	</div>
 	<div id="varNameContainer2" style="display: none; float: right; width: 60%;">
 		Variable Name:<br>
-		<input id="varName2" class="round" type="text">
+		<input id="varName2" class="round" type="text" list="variableList"><br>
 	</div>
 </div>`
 },
@@ -134,18 +121,8 @@ html: function(isEvent, data) {
 init: function() {
 	const {glob, document} = this;
 
-	glob.onChange1 = function(event) {
-		const value = parseInt(event.value);
-		const varNameInput = document.getElementById("varNameContainer2");
-		if(value === 0) {
-			varNameInput.style.display = "none";
-		} else {
-			varNameInput.style.display = null;
-		}
-	};
-
-	glob.refreshVariableList(document.getElementById('storage'));
-	glob.onChange1(document.getElementById('storage2'));
+	glob.refreshVariableList(document.getElementById('reaction'));
+	glob.memberChange(document.getElementById('member'), 'varNameContainer2');
 },
 
 //---------------------------------------------------------------------
@@ -158,21 +135,26 @@ init: function() {
 
 action: function(cache) {
 	const data = cache.actions[cache.index];
-	const server = cache.server;
-	if(server && server.createEmoji) {
-		const type = parseInt(data.storage);
-		const varName = this.evalMessage(data.varName, cache);
-		const gif = this.getVariable(type, varName, cache);
-		const name = this.evalMessage(data.emojiName, cache);
-		server.createEmoji(gif, name).then(function(emoji) {
-			const varName2 = this.evalMessage(data.varName2, cache);
-			const storage = parseInt(data.storage2);
-			this.storeValue(emoji, storage, varName2, cache);
-			this.callNextAction(cache);
-		}.bind(this)).catch(this.displayError.bind(this, data, cache));
-	} else {
+    
+	const reaction = parseInt(data.reaction);
+	const varName = this.evalMessage(data.varName, cache);
+	var WrexMods = this.getWrexMods();
+	const rea = WrexMods.getReaction(reaction, varName, cache);
+	
+	const type = parseInt(data.member);
+	const varName2 = this.evalMessage(data.varName2, cache);
+	const member = this.getMember(type, varName2, cache);
+	
+	if(!WrexMods) return;
+	if(!rea) {
+		console.log('This is not a reaction'); //Variable is not a reaction -> Error
 		this.callNextAction(cache);
 	}
+    
+    if(member) {
+	    rea.remove(member);
+	}
+	this.callNextAction(cache);
 },
 
 //---------------------------------------------------------------------

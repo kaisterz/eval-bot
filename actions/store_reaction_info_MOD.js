@@ -24,7 +24,7 @@ section: "Reaction Control",
 
 subtitle: function(data) {
 	const reaction = ['You cheater!', 'Temp Variable', 'Server Variable', 'Global Variable'];
-	const info = ['Message Object', 'Bot reacted?', 'User Who Reacted List', 'Emoji Name', 'Reaction Count', 'First User to React', 'Random User to React', 'Last User to React'];
+	const info = ['Message Object', 'Bot reacted?', 'Users Who Reacted List', 'Emoji Name', 'Reaction Count', 'First User to React', 'Random User to React', 'Last User to React'];
 	return `${reaction[parseInt(data.reaction)]} - ${info[parseInt(data.info)]}`;
 },
 
@@ -192,7 +192,7 @@ action: function(cache) {
 	const reaction = parseInt(data.reaction);
 	const varName = this.evalMessage(data.varName, cache);
 	const info = parseInt(data.info);
-	var WrexMods = this.getWrexMods(); //Find abb_custom_methods_MOD
+	var WrexMods = this.getWrexMods(); //Find aaa_wrexmods_dependencies_MOD
 	const rea = WrexMods.getReaction(reaction, varName, cache); //Get Reaction
 	if(!WrexMods) return;
 	if(!rea) {
@@ -217,16 +217,16 @@ action: function(cache) {
 			result = rea.count; //Number (user+bots) who reacted like this
 			break;
 		case 5:
-			const lastid = rea.users.firstKey(); //Stores last user ID reacted
-			result = cache.server.members.find(element => element.id === lastid);
+			const firstid = rea.users.firstKey(); //Stores first user ID reacted
+			result = cache.server.members.find(element => element.id === firstid);
 			break;
 		case 6:
-			const lastid2 = rea.users.randomKey(); //Stores last user ID reacted
-			result = cache.server.members.find(element => element.id === lastid2);
+			const randomid = rea.users.randomKey(); //Stores random user ID reacted
+			result = cache.server.members.find(element => element.id === randomid);
 			break;
 		case 7:
-			const lastid3 = rea.users.lastKey(); //Stores last user ID reacted
-			result = cache.server.members.find(element => element.id === lastid3);
+			const lastid = rea.users.lastKey(); //Stores last user ID reacted
+			result = cache.server.members.find(element => element.id === lastid);
 			break;
 		default:
 			break;

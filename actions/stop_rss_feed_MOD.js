@@ -6,7 +6,7 @@ module.exports = {
 	// This is the name of the action displayed in the editor.
 	//---------------------------------------------------------------------
 
-	name: "Sends Stats to DBL",
+	name: "Stop RSS Feed Watcher",
 
 	//---------------------------------------------------------------------
 	// Action Section
@@ -23,8 +23,7 @@ module.exports = {
 	//---------------------------------------------------------------------
 
 	subtitle: function (data) {
-		const info = ['Only Server Count', 'Shard & Server Count'];
-		return `Send ${info[parseInt(data.info)]} to DBL!`;
+		return `${data.url}`;
 	},
 
 	//---------------------------------------------------------------------
@@ -35,15 +34,14 @@ module.exports = {
 	//---------------------------------------------------------------------
 
 	// Who made the mod (If not set, defaults to "DBM Mods")
-	author: "EGGSY",
+	author: "Two",
 
 	// The version of the mod (Defaults to 1.0.0)
-	version: "1.9.2", //Added in 1.8.9
+	version: "1.9.3",
 
 	// A short description to show on the mod line for this mod (Must be on a single line)
-	short_description: "Send bot stats to Discord Bot List!",
+	short_description: "This mod allows you to stop a watch rss feed",
 
-	// If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
 
 	//---------------------------------------------------------------------
 	// Action Storage Function
@@ -51,7 +49,8 @@ module.exports = {
 	// Stores the relevant variable info for the editor.
 	//---------------------------------------------------------------------
 
-	// NOTHING HERE, K, PLS LEAVE NOW.
+	variableStorage: function (data, varType) {
+	},
 
 	//---------------------------------------------------------------------
 	// Action Fields
@@ -61,7 +60,7 @@ module.exports = {
 	// are also the names of the fields stored in the action's JSON data.
 	//---------------------------------------------------------------------
 
-	fields: ["dblToken", "info"],
+	fields: ["storage", "varName"],
 
 	//---------------------------------------------------------------------
 	// Command HTML
@@ -81,27 +80,17 @@ module.exports = {
 
 	html: function (isEvent, data) {
 		return `
-<div id="modinfo">
-	<p>
-	   <u>Mod Info:</u><br>
-	   Made by EGGSY!<br>
-	</p>
-	<div style="float: left; width: 99%; padding-top: 8px;">
-	   Your DBL Token:<br>
-	   <input id="dblToken" class="round" type="text">
-	</div><br>
-	<div style="float: left; width: 90%; padding-top: 8px;">
-	   Info to Send:<br>
-	   <select id="info" class="round">
-		<option value="0">Send Only Server Count</option>
-		<option value="1">Send Shard & Server Count</option>
-	</select><br>
-	<p>
-		• Using this mod with events will be better. I suggest using this with Bot Join & Bot Leave Server event.<br>
-		• Do not send anything about shards if you don't shard your bot, otherwise it'll crash your bot!
-	</p>
+		<div>
+	<div style="float: left; width: 35%;">
+		RSS Feed Source:<br>
+		<select id="storage" class="round" onchange="glob.refreshVariableList(this)">
+			${data.variables[1]}
+		</select>
 	</div>
-</div>`
+	<div id="varNameContainer" style="float: right; width: 60%;">
+		Variable Name:<br>
+		<input id="varName" class="round" type="text" list="variableList"><br>
+	</div>`
 	},
 
 	//---------------------------------------------------------------------
@@ -112,8 +101,7 @@ module.exports = {
 	// functions for the DOM elements.
 	//---------------------------------------------------------------------
 
-	init: function () {
-	},
+	init: function () {},
 
 	//---------------------------------------------------------------------
 	// Action Bot Function
@@ -124,24 +112,21 @@ module.exports = {
 	//---------------------------------------------------------------------
 
 	action: function (cache) {
-
 		const data = cache.actions[cache.index];
-		const token = this.evalMessage(data.dblToken, cache);
-		const info = parseInt(data.info);
-		// Commented due errors => var client = this.getDBM().Bot.bot; 
+		const varName = this.evalMessage(data.varName, cache);
+		const storage = parseInt(data.storage);
+		var stor = storage + varName
+		const res = this.getVariable(storage, stor, cache);
+      
 
-		const WrexMODS = this.getWrexMods(); // still, as always <3
-		const DBL = WrexMODS.require('dblapi.js'); // what a great module!
-		const dbl = new DBL(token);
 
-		if (info == 0) {
-			dbl.postStats(this.getDBM().Bot.bot.guilds.size)
-				.catch(e => console.log(e))
-		}
-		else if (info == 1) {
-			dbl.postStats(this.getDBM().Bot.bot.guilds.size, this.getDBM().Bot.bot.shard.id, this.getDBM().Bot.bot.shard.count)
-				.catch(e => console.log(e))
-		}
+		// Stop watching the feed.
+		
+			res.stop()
+			
+			this.callNextAction(cache);
+		
+
 	},
 
 	//---------------------------------------------------------------------
@@ -153,7 +138,6 @@ module.exports = {
 	// functions you wish to overwrite.
 	//---------------------------------------------------------------------
 
-	mod: function (DBM) {
-	}
+	mod: function (DBM) {}
 
 }; // End of module

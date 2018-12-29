@@ -6,7 +6,7 @@ module.exports = {
 // This is the name of the action displayed in the editor.
 //---------------------------------------------------------------------
 
-name: "Change Global Prefix",
+name: "Read File",
 
 //---------------------------------------------------------------------
 // Action Section
@@ -14,7 +14,7 @@ name: "Change Global Prefix",
 // This is the section the action will fall into.
 //---------------------------------------------------------------------
 
-section: "Bot Client Control",
+section: "File Stuff",
 
 //---------------------------------------------------------------------
 // Action Subtitle
@@ -23,29 +23,30 @@ section: "Bot Client Control",
 //---------------------------------------------------------------------
 
 subtitle: function(data) {
-	return `Change Prefix`;
+    const info1 = data.filename;
+    return `Read File "${data.filename}"`;
 },
 
-//---------------------------------------------------------------------
-	 // DBM Mods Manager Variables (Optional but nice to have!)
-	 //
-	 // These are variables that DBM Mods Manager uses to show information
-	 // about the mods for people to see in the list.
-	 //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    // DBM Mods Manager Variables (Optional but nice to have!)
+    //
+    // These are variables that DBM Mods Manager uses to show information
+    // about the mods for people to see in the list.
+    //---------------------------------------------------------------------
 
-	 // Who made the mod (If not set, defaults to "DBM Mods")
-	 author: "EliteArtz & General Wrex",
+    // Who made the mod (If not set, defaults to "DBM Mods")
+    author: "EliteArtz",
 
-	 // The version of the mod (Defaults to 1.0.0)
-	 version: "1.9.1", // original 1.8.4 | re-added in 1.9.1 ~ Danno3817
+    // The version of the mod (Defaults to 1.0.0)
+    version: "1.8.8", //Added in 1.8.6
 
-	 // A short description to show on the mod line for this mod (Must be on a single line)
-	 short_description: "Change Prefix from Bot",
+    // A short description to show on the mod line for this mod (Must be on a single line)
+    short_description: "Reads a file you wan't",
 
-	 // If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
+    // If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
 
 
-	 //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
 
 //---------------------------------------------------------------------
 // Action Storage Function
@@ -53,7 +54,13 @@ subtitle: function(data) {
 // Stores the relevant variable info for the editor.
 //---------------------------------------------------------------------
 
-//variableStorage: function(data, varType) {},
+variableStorage: function(data, varType) {
+    const type = parseInt(data.storage);
+    if (type !== varType) return;
+    const filename = parseInt(data.filename);
+    let dataType = 'File';
+    return ([data.varName2, dataType]);
+},
 
 //---------------------------------------------------------------------
 // Action Fields
@@ -63,7 +70,7 @@ subtitle: function(data) {
 // are also the names of the fields stored in the action's JSON data.
 //---------------------------------------------------------------------
 
-fields: ["pprefix"],
+fields: ["filename", "storage", "varName2"],
 
 //---------------------------------------------------------------------
 // Command HTML
@@ -82,20 +89,35 @@ fields: ["pprefix"],
 //---------------------------------------------------------------------
 
 html: function(isEvent, data) {
-	return `
+    return `
 <div>
-	<p>
-		<u>Mod Info:</u><br>
-		Made by EliteArtz<br>
-	</p>
     <p>
-        <u>Thanks to:</u><br>
-        General Wrex for helping with scripting<br>
+        <u>Mod Info:</u><br>
+        Created by EliteArtz<br><br>
+
+        <u>Notice:</u><br>
+        - Use currently "Parse from Stored Json" Mod by General Wrex. for getting Json object's etc<br>
+        - Find Json Object's etc will added soon!<br>
+        - The Files can only be read when they are in the bot files. e.g. "./data/commands.json"<br>
     </p>
-    Change Prefix to:<br>
-	<textarea id="pprefix" class="round" style="width: 40%; resize: none;" type="textarea" rows="1" cols="20"></textarea><br><br>
-</div>`;
-},
+    <div style="float: left; width: 60%">
+        Path:
+        <input id="filename" class="round" type="text">
+    </div><br>
+</div><br><br><br>
+<div>
+    <div style="float: left; width: 35%;">
+        Store In:<br>
+        <select id="storage" class="round">
+            ${data.variables[1]}
+        </select>
+    </div>
+    <div id="varNameContainer2" style="float: right; width: 60%;">
+        Variable Name:<br>
+        <input id="varName2" class="round" type="text"><br>
+    </div>
+</div>`
+    },
 
 //---------------------------------------------------------------------
 // Action Editor Init Code
@@ -116,19 +138,20 @@ init: function() {},
 //---------------------------------------------------------------------
 
 action: function (cache) {
-    const data = cache.actions[cache.index];
-
+    const
+        data = cache.actions[cache.index],
+        fs = require('fs'),
+        FILENAME = this.evalMessage(data.filename, cache);
+    var output = {};
     try {
-
-        var prefix = this.evalMessage(data.pprefix, cache);
-        if (prefix) {
-            this.getDBM().Files.data.settings.tag = prefix;
-            this.getDBM().Files.saveData("settings", function () { console.log("Prefix changed to " + prefix) });
+        if (FILENAME) {
+            output = fs.readFileSync(FILENAME, 'utf8');
+            this.storeValue(output, parseInt(data.storage), this.evalMessage(data.varName2, cache), cache);
         } else {
-            console.log(prefix + " is not valid! Try again!");
-        }
+            console.log(`Path is missing.`);
+         }
     } catch (err) {
-        console.log("ERROR!" + err.stack ? err.stack : err);
+        console.error("ERROR!" + err.stack ? err.stack : err);
     }
     this.callNextAction(cache);
 },
@@ -142,7 +165,6 @@ action: function (cache) {
 // functions you wish to overwrite.
 //---------------------------------------------------------------------
 
-mod: function(DBM) {
-}
+mod: function(DBM) {}
 
 }; // End of module

@@ -6,7 +6,7 @@ module.exports = {
 	// This is the name of the action displayed in the editor.
 	//---------------------------------------------------------------------
 
-	name: "Sends Stats to DBL",
+	name: "RSS Feed Watcher",
 
 	//---------------------------------------------------------------------
 	// Action Section
@@ -23,8 +23,7 @@ module.exports = {
 	//---------------------------------------------------------------------
 
 	subtitle: function (data) {
-		const info = ['Only Server Count', 'Shard & Server Count'];
-		return `Send ${info[parseInt(data.info)]} to DBL!`;
+		return `${data.url}`;
 	},
 
 	//---------------------------------------------------------------------
@@ -35,15 +34,14 @@ module.exports = {
 	//---------------------------------------------------------------------
 
 	// Who made the mod (If not set, defaults to "DBM Mods")
-	author: "EGGSY",
+	author: "Two",
 
 	// The version of the mod (Defaults to 1.0.0)
-	version: "1.9.2", //Added in 1.8.9
+	version: "1.9.3",
 
 	// A short description to show on the mod line for this mod (Must be on a single line)
-	short_description: "Send bot stats to Discord Bot List!",
+	short_description: "This mod allows you to watch rss feeds for updates & store the update in a variable.",
 
-	// If it depends on any other mods by name, ex: WrexMODS if the mod uses something from WrexMods
 
 	//---------------------------------------------------------------------
 	// Action Storage Function
@@ -51,7 +49,11 @@ module.exports = {
 	// Stores the relevant variable info for the editor.
 	//---------------------------------------------------------------------
 
-	// NOTHING HERE, K, PLS LEAVE NOW.
+	variableStorage: function (data, varType) {
+		const type = parseInt(data.storage);
+		if (type !== varType) return;
+		return ([data.varName, 'RSS Feed']);
+	},
 
 	//---------------------------------------------------------------------
 	// Action Fields
@@ -61,7 +63,7 @@ module.exports = {
 	// are also the names of the fields stored in the action's JSON data.
 	//---------------------------------------------------------------------
 
-	fields: ["dblToken", "info"],
+	fields: ["path", "url", "storage", "varName"],
 
 	//---------------------------------------------------------------------
 	// Command HTML
@@ -81,25 +83,29 @@ module.exports = {
 
 	html: function (isEvent, data) {
 		return `
-<div id="modinfo">
-	<p>
-	   <u>Mod Info:</u><br>
-	   Made by EGGSY!<br>
-	</p>
-	<div style="float: left; width: 99%; padding-top: 8px;">
-	   Your DBL Token:<br>
-	   <input id="dblToken" class="round" type="text">
-	</div><br>
-	<div style="float: left; width: 90%; padding-top: 8px;">
-	   Info to Send:<br>
-	   <select id="info" class="round">
-		<option value="0">Send Only Server Count</option>
-		<option value="1">Send Shard & Server Count</option>
-	</select><br>
-	<p>
-		• Using this mod with events will be better. I suggest using this with Bot Join & Bot Leave Server event.<br>
-		• Do not send anything about shards if you don't shard your bot, otherwise it'll crash your bot!
-	</p>
+	<div style="padding-top: 8px;">
+	<div style="float:left"><u>Note:</u><b>This action will not stop watching the feed until bot restarts or using Stop RSS Feed Watcher action!</b></div><br>
+<br>
+<div style="float:left"><b>The next actions will be called on feed update!</b></div><br>
+
+<div>
+	Local/Web URL:<br>
+	<input id="url" class="round" type="text" placeholder="eg. https://github.com/dbm-mods.atom"><br>
+</div>
+<div>
+	Json Path:<br>
+	<input id="path" class="round" type="text" placeholder="Leave Blank if not needed."><br>
+</div>
+<div>
+	<div style="float: left; width: 35%;">
+		Store In:<br>
+		<select id="storage" class="round">
+			${data.variables[1]}
+		</select>
+	</div>
+	<div id="varNameContainer" style="float: right; width: 60%;">
+		Variable Name:<br>
+		<input id="varName" class="round" type="text"><br>
 	</div>
 </div>`
 	},
@@ -112,8 +118,7 @@ module.exports = {
 	// functions for the DOM elements.
 	//---------------------------------------------------------------------
 
-	init: function () {
-	},
+	init: function () {},
 
 	//---------------------------------------------------------------------
 	// Action Bot Function
@@ -124,24 +129,58 @@ module.exports = {
 	//---------------------------------------------------------------------
 
 	action: function (cache) {
-
 		const data = cache.actions[cache.index];
-		const token = this.evalMessage(data.dblToken, cache);
-		const info = parseInt(data.info);
-		// Commented due errors => var client = this.getDBM().Bot.bot; 
+		const url = this.evalMessage(data.url, cache);
+		const varName = this.evalMessage(data.varName, cache);
+		const storage = parseInt(data.storage);
+		const path = parseInt(data.path);
+		var _this = this
+		var stor = storage + varName
+		console.log(stor)
+		const WrexMODS = this.getWrexMods();
+		const {
+			JSONPath
+		} = WrexMODS.require('jsonpath-plus');
+		var Watcher = WrexMODS.require('feed-watcher'),
+			feed = url,
+			interval = 10 // seconds
 
-		const WrexMODS = this.getWrexMods(); // still, as always <3
-		const DBL = WrexMODS.require('dblapi.js'); // what a great module!
-		const dbl = new DBL(token);
+		// if not interval is passed, 60s would be set as default interval.
+		var watcher = new Watcher(feed, interval)
+		this.storeValue(watcher, storage, stor, cache);
+	
+		// Check for new entries every n seconds.
+		watcher.on('new entries', function (entries) {
+			entries.forEach(function (entry) {
 
-		if (info == 0) {
-			dbl.postStats(this.getDBM().Bot.bot.guilds.size)
-				.catch(e => console.log(e))
-		}
-		else if (info == 1) {
-			dbl.postStats(this.getDBM().Bot.bot.guilds.size, this.getDBM().Bot.bot.shard.id, this.getDBM().Bot.bot.shard.count)
-				.catch(e => console.log(e))
-		}
+                if(path){
+					var res = JSONPath({
+						path: path,
+						json: entry
+					});
+					_this.storeValue(res, storage, varName, cache);
+				} else if (!path){
+					_this.storeValue(entry, storage, varName, cache);
+				}
+
+				
+				
+                _this.callNextAction(cache);
+			})
+		})
+
+		// Start watching the feed.
+		watcher
+			.start()
+			.then(function (entries) {
+				console.log('Starting watching...')
+			})
+			.catch(function (error) {
+				console.error(error)
+			})
+
+		
+
 	},
 
 	//---------------------------------------------------------------------
@@ -153,7 +192,6 @@ module.exports = {
 	// functions you wish to overwrite.
 	//---------------------------------------------------------------------
 
-	mod: function (DBM) {
-	}
+	mod: function (DBM) {}
 
 }; // End of module
